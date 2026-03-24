@@ -17,7 +17,7 @@ import {
   ImageListItem,
 } from "@material-ui/core";
 import { Alert, Button, IconButton } from "@mui/material";
-import { Add as AddIcon, Cancel, Close } from "@material-ui/icons";
+import { Add as AddIcon, Cancel, Close, Group } from "@material-ui/icons";
 import { Fragment, useEffect, useState } from "react";
 import MuiAlert from "@material-ui/lab/Alert";
 import { useDispatch, useSelector } from "react-redux";
@@ -26,7 +26,6 @@ import axios from "axios";
 import { url, getAuthHeader } from "../config";
 
 import { Scrollbars } from "react-custom-scrollbars";
-import { getToken, refetchUser } from "../store/User/userSlice";
 import { setSpecifiedList } from "../store/Products/productListSlice";
 import { Divider, Stack, Typography } from "@mui/material";
 import UserMinibar from "./Details/Single Items/UserMinibar";
@@ -71,6 +70,13 @@ const Friends = (props) => {
   const [query, setQuery] = useState("");
   const [foundFriend, setFoundFriend] = useState(circle);
   const [foundUser, setFoundUser] = useState([]);
+  const [isLandscape, setIsLandscape] = useState(
+    window.matchMedia("(orientation: landscape").matches
+  );
+  window.addEventListener("resize", () => {
+    setIsLandscape(window.matchMedia("(orientation: landscape").matches);
+  });
+
   const getMatchedUsers = async (currSearchQuery) => {
     if (!currSearchQuery) {
       return [];
@@ -78,16 +84,6 @@ const Friends = (props) => {
     const { data } = await axios.get(`${url}/search/user/${currSearchQuery}`);
     return data || [];
   };
-  useEffect(async () => {
-    if (token && token !== "") {
-      const reloader = setInterval(() => {
-        dispatch(refetchUser);
-        return () => {
-          clearInterval(reloader);
-        };
-      }, 10000);
-    }
-  }, [token]);
   useEffect(async () => {
     let friendTemp = [];
     let userTemp = [];
@@ -124,7 +120,20 @@ const Friends = (props) => {
         open={open}
       >
         <Container className={classes.container}>
-          <Box py={2}>
+          <Box display={"flex"} style={{ verticalAlign: "center" }} pt={2}>
+            <Group color="disabled" />
+            <Typography
+              px={1}
+              fontSize={18}
+              sx={{ color: "GrayText" }}
+              fontFamily={"sans-serif"}
+              textAlign={"center"}
+            >
+              Manage Friends
+            </Typography>
+          </Box>
+
+          <Box>
             <Box m={1}>
               <Stack spacing={1} direction={"row"}>
                 <TextField
@@ -157,18 +166,41 @@ const Friends = (props) => {
             </Box>
 
             <Scrollbars
-              style={{ height: 520 }}
+              style={{ height: isLandscape ? 420 : 580 }}
               autoHide
               autoHideTimeout={0}
               autoHideDuration={200}
             >
               {/* <Typography color={"GrayText"} fontWeight={"bold"}>
-                  Friends
+                  FriendsW
                 </Typography> 
                  <Divider orientation="horizontal" sx={{ color: "GrayText" }} />*/}
               <Box m={1}>
                 {!search || query === "" ? (
                   <Stack spacing={1}>
+                    {account.friendRequest !== 0 ? (
+                      <Fragment>
+                        <Typography color={"GrayText"} fontWeight={"bold"}>
+                          Friend Requests
+                        </Typography>
+                        <Divider
+                          orientation="horizontal"
+                          sx={{ color: "GrayText" }}
+                        />
+                        {account.friendRequest.map((friend) => (
+                          <UserMinibar key={friend} user={friend} />
+                        ))}
+                      </Fragment>
+                    ) : (
+                      ""
+                    )}
+                    <Typography color={"GrayText"} fontWeight={"bold"}>
+                      Friends
+                    </Typography>
+                    <Divider
+                      orientation="horizontal"
+                      sx={{ color: "GrayText" }}
+                    />
                     {circle.map((friend) => (
                       <UserMinibar key={friend} user={friend} />
                     ))}
