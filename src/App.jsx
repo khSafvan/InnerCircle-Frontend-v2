@@ -4,7 +4,7 @@ import Feed from "./components/Feed";
 import Leftbar from "./components/Leftbar";
 import Navbar from "./components/Navbar";
 import Rightbar from "./components/Rightbar";
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import axios from "axios";
 import { getAuthHeader, url } from "./config";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,6 +17,7 @@ import { Link, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import Notfound from "./components/Notfound";
 
 import { refetchUser } from "./store/User/userSlice";
+import { login } from "./store/ApplicationStates/applicationStateSlice";
 
 const useStyles = makeStyles((theme) => ({
   right: {
@@ -30,9 +31,16 @@ const App = () => {
   const token = useSelector(getToken);
   const dispatch = useDispatch();
   const { loggedIn } = useSelector((state) => state.applicationState);
+  console.log(loggedIn, token);
+  if (token && token !== "" && !loggedIn) {
+    dispatch(login());
+  }
   //Get User By Token in Local Storage
   useEffect(() => {
     (async () => {
+      if (!token || token === "") {
+        return;
+      }
       const { data } = await axios.get(`${url}/user/me`, getAuthHeader(token));
       if (data) {
         dispatch(refreshUser(data));
@@ -108,7 +116,10 @@ const App = () => {
               <Route path="/discover" element={<Feed discover />} />
               <Route path="/profile/:id" element={<div></div>} />
               <Route path="/profile" element={<div></div>} />
-              <Route path="/" element={<Feed />} />
+              <Route
+                path="/"
+                element={loggedIn ? <Feed /> : <div>PENDING</div>}
+              />
               <Route path="*" element={<Notfound is404 />} />
             </Routes>
           </Grid>
