@@ -26,8 +26,11 @@ import axios from "axios";
 import { url, getAuthHeader } from "../config";
 
 import { Scrollbars } from "react-custom-scrollbars";
-import { getToken } from "../store/User/userSlice";
-import { setSpecifiedList } from "../store/Products/productListSlice";
+import { getToken, refetchUser } from "../store/User/userSlice";
+import {
+  setCurrent,
+  setSpecifiedList,
+} from "../store/Products/productListSlice";
 
 const useStyles = makeStyles((theme) => ({
   fab: {
@@ -107,14 +110,34 @@ const Add = () => {
     };
   }, []);
   const previewImage = previewSource.map((img, i) => (
-    <ImageListItem key={i + `${Math.random()}`}>
+    <div
+      key={img}
+      onClick={async (event) => {
+        const previews = previewSource.filter(
+          (image) => image !== event.target.src
+        );
+        const filez = files.filter((image) => image !== event.target.src);
+        setPreviewSource(previews);
+        setFiles(filez);
+      }}
+    >
       <img style={{ height: 80 }} src={img} alt="chosen" />
-    </ImageListItem>
+    </div>
   ));
 
-  const handleFileInputChange = (event) => {
+  const handleFileInputChange = async (event) => {
     const file = event.target.files[0];
-    setFiles([...files, file]);
+    const formData = new FormData();
+
+    formData.append("avatar", event.target.files[0]);
+    const { data } = await axios.post(
+      `${url}/image`,
+      formData,
+      getAuthHeader(token)
+    );
+    if (data) {
+      setFiles([...files, data.url]);
+    }
     previewFile(file);
   };
 
@@ -128,25 +151,10 @@ const Add = () => {
   const handleCreate = async (event) => {
     try {
       const {
-        status,
         product: { _id: productId },
         product,
       } = await addProduct(newProduct, token);
-      files.forEach(async (singleFile) => {
-        try {
-          if (singleFile) {
-            const formData = new FormData();
-            formData.append("image", singleFile);
-            await axios.post(
-              `${url}/${productId}/add-image`,
-              formData,
-              getAuthHeader(token)
-            );
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      });
+
       if (productId) {
         setOpenAlert(true);
         setPreviewSource([]);
@@ -157,14 +165,54 @@ const Add = () => {
         setName("");
         setOpen(false);
       }
-      console.log(product);
       if (productId) {
-        discover.push(product);
-        dispatch(setSpecifiedList({ discover }));
+        try {
+          const { data: discover } = await axios.get(`${url}/products`);
+          const { data: catagories } = await axios.get(`${url}/catagories`);
+          if (token === "") {
+            dispatch(
+              setSpecifiedList({
+                current: discover,
+                discover,
+                catagories,
+              })
+            );
+            return;
+          }
+          const { data: feed } = await axios.get(`${url}/feed`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const {
+            data: [recommanded, recommandors],
+          } = await axios.get(`${url}/recommanded`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          dispatch(
+            setSpecifiedList({
+              recommandors,
+              discover,
+              feed,
+              catagories,
+              recommandation: recommanded,
+            })
+          );
+        } catch (error) {
+          console.log({ ...error });
+        }
       }
     } catch (error) {}
   };
-  const newProduct = { description, name, price, catagory: selectedCatagory };
+  const newProduct = {
+    description,
+    name,
+    price,
+    catagory: selectedCatagory,
+    images: files,
+  };
 
   return (
     <>
@@ -293,7 +341,7 @@ const Add = () => {
         anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
       >
         <Alert onClose={handleClose} severity="success">
-          This is a success message!
+          Product was successfully Added!
         </Alert>
       </Snackbar>
     </>
