@@ -6,10 +6,18 @@ import {
   Tabs,
   Typography,
 } from "@material-ui/core";
-import { Stack } from "@mui/material";
-import React, { useState } from "react";
+import { Refresh } from "@material-ui/icons";
+import { IconButton, Stack } from "@mui/material";
+import axios from "axios";
+import React, { Fragment, useState } from "react";
+import { useSelector } from "react-redux";
+import { getAuthHeader, url } from "../config";
+import { getToken, getUser } from "../store/User/userSlice";
 import AdminDashboard from "./AdminDashboard";
+import Catagories from "./Tables/Catagories";
 import Feedbacks from "./Tables/Feedbacks";
+import Products from "./Tables/Products";
+import Users from "./Tables/Users";
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -71,6 +79,17 @@ const useStyles = makeStyles((theme) => ({
       display: "none",
     },
   },
+  rotateIcon: {
+    animation: "$spin 1s linear infinite",
+  },
+  "@keyframes spin": {
+    "100%": {
+      transform: "rotate(360deg)",
+    },
+    "0%": {
+      transform: "rotate(0deg)",
+    },
+  },
   text: {
     fontWeight: 500,
     [theme.breakpoints.down("sm")]: {
@@ -81,15 +100,74 @@ const useStyles = makeStyles((theme) => ({
 
 export default function Admin() {
   const classes = useStyles();
+  const account = useSelector(getUser);
   const [value, setValue] = useState(0);
+  const [meta, setMeta] = useState({});
+  const [rug, setRug] = useState(false);
+  const [spin, setSpin] = useState(false);
   const handleChange = (event, newValue) => {
     setValue(newValue);
   };
+  const token = useSelector(getToken);
+  React.useEffect(async () => {
+    const { data } = await axios.get(`${url}/admin/dash`, getAuthHeader(token));
+    if (data) {
+      setMeta(data);
+    }
+    return () => {};
+  }, [token, rug]);
+
   return (
     <Container className={classes.container}>
       <Stack spacing={1}>
+        <Stack
+          direction={"row-reverse"}
+          display={"flex"}
+          justifyContent={"space-between"}
+        >
+          <IconButton
+            onClick={() => {
+              setSpin(true);
+              const timer = setTimeout(() => {
+                setSpin(false);
+                return () => {
+                  clearTimeout(timer);
+                };
+              }, 1000);
+              setRug((prev) => !prev);
+            }}
+          >
+            <Refresh className={spin ? classes.rotateIcon : ""} />
+          </IconButton>
+          <Stack
+            // style={{
+            //   backgroundColor: "gray",
+            //   borderRadius: "1.2em",
+            //   padding: 5,
+            // }}
+            direction={"row"}
+            spacing={1}
+          >
+            {/* <Typography
+              color="primary"
+              variant="h6"
+              display="flex"
+              style={{ alignSelf: "center" }}
+            >
+              superuser
+            </Typography>
+            <Typography
+              color="secondary"
+              variant="h6"
+              display="flex"
+              style={{ alignSelf: "center", fontStyle: "italic" }}
+            >
+              #{account.username}
+            </Typography> */}
+          </Stack>
+        </Stack>
         <Box p={1}>
-          <AdminDashboard />
+          <AdminDashboard dash={meta.counts} />
         </Box>
         <Box>
           <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -100,13 +178,35 @@ export default function Admin() {
               onChange={handleChange}
               aria-label="Admin"
             >
-              <Tab label="Posts" index={0} />
-              <Tab label="Users" index={1} />
-              <Tab label="Feedbacks" index={2} />
+              <Tab label="Feedbacks" index={0} />
+              <Tab label="Posts" index={1} />
+              <Tab label="Catagories" index={2} />
+              <Tab label="Users" index={3} />
             </Tabs>
           </Box>
+          <TabPanel value={value} index={0}>
+            <Feedbacks
+              rug={rug}
+              setRug={setRug}
+              feedbacks={meta.feedbacks || []}
+            />
+          </TabPanel>
+          <TabPanel value={value} index={1}>
+            <Products
+              rug={rug}
+              setRug={setRug}
+              products={meta.products || []}
+            />
+          </TabPanel>
           <TabPanel value={value} index={2}>
-            <Feedbacks />
+            <Catagories
+              rug={rug}
+              setRug={setRug}
+              catagories={meta.catagories || []}
+            />
+          </TabPanel>
+          <TabPanel value={value} index={3}>
+            <Users rug={rug} setRug={setRug} users={meta.users || []} />
           </TabPanel>
         </Box>
       </Stack>
